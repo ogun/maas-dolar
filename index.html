@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=500, initial-scale=1.0">
+    <title>Nerden Nereye</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.bundle.min.js"
+        integrity="sha512-SuxO9djzjML6b9w9/I07IWnLnQhgyYVSpHZx0JV97kGBfTIsUYlWflyuW4ypnvhBrslz1yJ3R+S14fdCWmSmSA=="
+        crossorigin="anonymous"></script>
+    <script src="./constants.js"></script>
+</head>
+
+<body>
+    <div>
+        <input type="month" class="start" name="start" min="2005-01" value="2005-01" />
+        <input type="month" class="end" name="end" min="2005-01" value="2020-10" />
+        <input type="number" class="salary" value="10000" />
+    </div>
+    <div>
+        <input type="month" class="start" name="start" min="2005-01" value="2005-01" />
+        <input type="month" class="end" name="end" min="2005-01" value="2020-10" />
+        <input type="number" class="salary" value="10000" />
+    </div>
+    <div>
+        <input type="month" class="start" name="start" min="2005-01" value="2005-01" />
+        <input type="month" class="end" name="end" min="2005-01" value="2020-10" />
+        <input type="number" class="salary" value="10000" />
+    </div>
+    <input type="button" value="Hesapla" onclick="javascript:Hesapla();" />
+
+
+    <canvas id="myChart" role="img"></canvas>
+    <script>
+        function Hesapla() {
+            var startMonths = document.querySelectorAll('input[type="month"].start');
+            var endMonths = document.querySelectorAll('input[type="month"].end');
+            var salariesEl = document.querySelectorAll('input[type="number"].salary');
+
+            var months = []
+            var salaries = []
+
+            for (let index = 0; index < startMonths.length; index++) {
+                const startMonth = startMonths[index].value;
+                const endMonth = endMonths[index].value;
+                const salary = Number(salariesEl[index].value);
+
+                let monthArray = LoopMonths(startMonth, endMonth);
+                months = months.concat(monthArray)
+
+                let salaryArray = Array(monthArray.length).fill(salary)
+                salaries = salaries.concat(salaryArray);
+            }
+
+            months = []
+            salaries = []
+
+            for (key in asgariUcret) {
+                const element = asgariUcret[key];
+
+                months.push(key)
+                salaries.push(element)
+            }
+
+            debugger
+            var salariesDolar = []
+            for (let index = 0; index < months.length; index++) {
+                const month = months[index];
+                const salary = salaries[index];
+                const exchangeRate = exchangeRates[month];
+
+                salariesDolar.push(salary / exchangeRate);
+            }
+
+            var findColor = function (value) {
+                var max = Math.max(...salariesDolar)
+                var min = Math.min(...salariesDolar)
+                var mid = max - ((max - min) / 2)
+
+                const minColor = [230, 124, 115]
+                const midColor = [255, 214, 102]
+                const maxColor = [087, 187, 138]
+
+                let rgb = []
+                let valueRange = value > mid ? max - mid : mid - min;
+                let minValueForRange = value > mid ? mid : min;
+                let maxColorForRange = value > mid ? maxColor : midColor;
+                let minColorForRange = value > mid ? midColor : minColor;
+
+                for (let index = 0; index < 3; index++) {
+                    let colorScale = maxColorForRange[index] - minColorForRange[index];
+
+                    let colorDiff = valueRange != 0 ? (colorScale * (value - minValueForRange)) / valueRange : 0
+                    let newColor = minColorForRange[index] + colorDiff;
+
+                    rgb.push(newColor);
+                }
+                let returnValue = `rgb(${rgb.join(', ')})`
+
+                return returnValue
+            }
+
+            var colorArray = []
+            for (let index = 0; index < salariesDolar.length; index++) {
+                const salary = salariesDolar[index];
+
+                colorArray.push(findColor(salary))
+            }
+
+            var ctx = document.getElementById('myChart').getContext('2d');
+            var chart = new Chart(ctx, {
+                // The type of chart we want to create
+                type: 'line',
+                plugins: [{
+                    afterLayout: chart => {
+                        var ctx = chart.chart.ctx;
+                        var xAxis = chart.scales['x-axis-0'];
+                        var gradientStroke = ctx.createLinearGradient(xAxis.left, 0, xAxis.right, 0);
+                        var dataset = chart.data.datasets[0];
+                        dataset.colors.forEach((c, i) => {
+                            var stop = 1 / (dataset.colors.length - 1) * i;
+                            gradientStroke.addColorStop(stop, dataset.colors[i]);
+                        });
+                        dataset.backgroundColor = gradientStroke;
+                        dataset.borderColor = gradientStroke;
+                        dataset.pointBorderColor = gradientStroke;
+                        dataset.pointBackgroundColor = gradientStroke;
+                        dataset.pointHoverBorderColor = gradientStroke;
+                        dataset.pointHoverBackgroundColor = gradientStroke;
+                    }
+                }],
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: '',
+                        colors: colorArray,
+                        data: salariesDolar,
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    title: {
+                        display: true,
+                        text: 'Chart.js Line Chart'
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM YY'
+                                }
+                            }
+                        }],
+                        yAxes: [{
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Dolar'
+                            }
+                        }]
+                    }
+                }
+            });
+
+            chart.update();
+        }
+
+
+        function LoopMonths(startDate, endDate) {
+            let start = new Date(startDate)
+            let end = new Date(endDate)
+
+            let returnValue = []
+            while (start <= end) {
+                var y = start.getFullYear();
+                var m = start.getMonth() + 1;
+
+                returnValue.push(`${y}-${m}`);
+                start = new Date(start.setMonth(start.getMonth() + 1));
+            }
+
+            return returnValue
+        }
+
+    </script>
+</body>
+
+</html>
